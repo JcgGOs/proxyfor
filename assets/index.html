@@ -385,6 +385,7 @@
                     <a class="dropbtn" href="/__proxyfor__/certificate/" target="_blank"
                         title="Install CA certificate for proxying HTTPS traffic">Install Certificate</a>
                 </div>
+                <button class="dropbtn" id="clear-btn" title="Clear all traffics">Clear</button>
             </div>
         </div>
         <div class="main">
@@ -679,6 +680,14 @@
             $searchInput.addEventListener("input", (e) => {
                 currentFilter = e.target.value;
                 handleFilterTraffics();
+            });
+
+            document.getElementById('clear-btn').addEventListener('click', async () => {
+                await fetch(listTrafficsEndpoint, { method: 'DELETE' });
+                $trafficTableBody.innerHTML = '';
+                $mainView.innerHTML = '';
+                currentTraffic = null;
+                selectedTrafficId = null;
             });
 
             document.addEventListener("click", function (e) {

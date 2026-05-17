@@ -232,7 +232,7 @@ impl Server {
                 );
                 return Ok(res);
             }
-            if method != Method::GET {
+            if method != Method::GET && method != Method::DELETE {
                 *res.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
                 return Ok(res);
             }
@@ -243,6 +243,13 @@ impl Server {
                 self.handle_subscribe_traffics(&mut res).await
             } else if let Some(id) = path.strip_prefix("/subscribe/websocket/") {
                 self.handle_subscribe_websocket(&mut res, id).await
+            } else if path == "/traffics" && method == Method::DELETE {
+                let files = self.state.clear_all().await;
+                for file in files {
+                    let _ = tokio::fs::remove_file(&file).await;
+                }
+                set_res_body(&mut res, "Cleared");
+                Ok(())
             } else if path == "/traffics" {
                 let query = req.uri().query().unwrap_or_default();
                 self.handle_list_traffics(&mut res, query).await

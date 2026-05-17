@@ -83,6 +83,20 @@ impl State {
             .collect()
     }
 
+    pub async fn clear_all(&self) -> Vec<String> {
+        let mut traffics = self.traffics.lock().await;
+        let files: Vec<String> = traffics
+            .values()
+            .flat_map(|t| [t.req_body_file.clone(), t.res_body_file.clone()].into_iter().flatten())
+            .collect();
+        traffics.clear();
+
+        let mut websockets = self.websockets.lock().await;
+        websockets.clear();
+
+        files
+    }
+
     pub async fn export_traffic(&self, id: usize, format: &str) -> Result<(String, &'static str)> {
         let traffic = self
             .get_traffic(id)

@@ -376,8 +376,26 @@ impl App {
                 } else if self.current_confirm.is_some() {
                     match key.code {
                         KeyCode::Char('y') => {
-                            if let Some(Confirm::Quit) = self.current_confirm {
-                                self.should_quit = true;
+                            match self.current_confirm {
+                                Some(Confirm::Quit) => self.should_quit = true,
+                                Some(Confirm::ClearAll) => {
+                                    let state = self.state.clone();
+                                    let message_tx = self.message_tx.clone();
+                                    tokio::spawn(async move {
+                                        let files = state.clear_all().await;
+                                        for file in files {
+                                            let _ = tokio::fs::remove_file(&file).await;
+                                        }
+                                        let _ = message_tx.send(Message::Info("Cleared".into()));
+                                    });
+                                    self.traffics.clear();
+                                    self.filtered_traffic_indices = None;
+                                    self.current_traffic = None;
+                                    self.current_websocket = None;
+                                    self.selected_traffic_index = 0;
+                                    self.current_confirm = None;
+                                }
+                                None => {}
                             }
                         }
                         KeyCode::Esc | KeyCode::Char('n') => {
@@ -519,6 +537,11 @@ impl App {
                     KeyCode::Char('e') => {
                         if self.current_popup.is_none() && !self.traffics.is_empty() {
                             self.current_popup = Some(Popup::Export(0));
+                        }
+                    }
+                    KeyCode::Char('D') => {
+                        if self.current_view == View::Main && !self.traffics.is_empty() {
+                            self.current_confirm = Some(Confirm::ClearAll);
                         }
                     }
                     KeyCode::Char('/') => {
@@ -754,6 +777,7 @@ impl App {
     fn render_confirm(&self, frame: &mut Frame, area: Rect, confirm: &Confirm) {
         let text = match confirm {
             Confirm::Quit => "Quit",
+            Confirm::ClearAll => "Clear all traffics",
         };
         let style = Style::default().bold().underlined();
         let line = Line::from(vec![
@@ -999,6 +1023,7 @@ impl View {
                 ("/", "Search"),
                 ("c", "Copy"),
                 ("e", "Export"),
+                ("D", "Clear"),
                 ("q", "Quit"),
             ],
             View::Details => &[
@@ -1036,4 +1061,5 @@ enum Popup {
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Confirm {
     Quit,
+    ClearAll,
 }
